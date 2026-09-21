@@ -306,7 +306,13 @@ class ProtectApi {
         }
 
         this.updatesWebsocketAlive = false;
-        this.updatesWebsocket.ping();
+        try {
+            this.updatesWebsocket.ping();
+        } catch (error) {
+            this.log.error(`${this.config.protectip}: Error sending websocket heartbeat: ${error}`);
+            this.disconnect();
+            return;
+        }
         this.updatesWebsocketHeartbeatTimer = setTimeout(() => {
             this.checkUpdatesWebsocketHeartbeat();
         }, settings.PROTECT_EVENTS_HEARTBEAT_INTERVAL * 1000);

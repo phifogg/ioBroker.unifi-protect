@@ -274,6 +274,11 @@ class ProtectUpdateEvents {
                 return;
             }
 
+            if (!updatePacket.action || typeof updatePacket.action !== 'object' || !updatePacket.payload || typeof updatePacket.payload !== 'object') {
+                this.log.error(`${this.config.protectip}: Ignoring malformed message from the realtime update events API.`);
+                return;
+            }
+
             // The update actions that we care about (doorbell rings, motion detection) look like this:
             //
             // action: "update"
@@ -306,7 +311,9 @@ class ProtectUpdateEvents {
 
                     // It's a motion event - process it accordingly, but only if we're not configured for smart motion events - we handle those elsewhere.
                     if (payload.isMotionDetected) {
-                        this.motionEventHandler(updatePacket.action.id, payload);
+                        this.motionEventHandler(updatePacket.action.id, payload).catch(error => {
+                            this.log.error(`[motionEventHandler] error: ${error.message}, stack: ${error.stack}`);
+                        });
                     }
 
                     // It's a ring event - process it accordingly.
@@ -340,7 +347,9 @@ class ProtectUpdateEvents {
                         return;
                     }
 
-                    this.smartDetectZoneEventHandler(payload.camera, payload);
+                    this.smartDetectZoneEventHandler(payload.camera, payload).catch(error => {
+                        this.log.error(`[smartDetectZoneEventHandler] error: ${error.message}, stack: ${error.stack}`);
+                    });
                     return;
                 }
 
@@ -469,22 +478,30 @@ class ProtectUpdateEvents {
     }
 
     doorbellEventHandler(doorbellId, ringEvent) {
-        this.log.debug(`Ring at ${ringEvent.lastRing} for ${doorbellId}`);
+        try {
+            this.log.debug(`Ring at ${ringEvent.lastRing} for ${doorbellId}`);
 
-        this.protect.setState('realTimeEvents.lastRing.doorbell', doorbellId, true);
-        this.protect.setState('realTimeEvents.lastRing.timestamp', ringEvent.lastRing, true);
-        this.protect.setState('realTimeEvents.lastRing.raw', JSON.stringify(ringEvent), true);
+            this.protect.setState('realTimeEvents.lastRing.doorbell', doorbellId, true);
+            this.protect.setState('realTimeEvents.lastRing.timestamp', ringEvent.lastRing, true);
+            this.protect.setState('realTimeEvents.lastRing.raw', JSON.stringify(ringEvent), true);
+        } catch (error) {
+            this.log.error(`[doorbellEventHandler] error: ${error.message}, stack: ${error.stack}`);
+        }
     }
 
     lcdMessageEventHandler(doorbellId, lcdEvent) {
-        this.log.debug(`LcdMessage ${lcdEvent.lcdMessage} for ${doorbellId}`);
+        try {
+            this.log.debug(`LcdMessage ${lcdEvent.lcdMessage} for ${doorbellId}`);
 
-        this.protect.setState('realTimeEvents.lcdMessage.doorbell', doorbellId, true);
-        this.protect.setState('realTimeEvents.lcdMessage.raw', JSON.stringify(lcdEvent), true);
-        if (lcdEvent.lcdMessage.type) {
-            this.protect.setState('realTimeEvents.lcdMessage.type', lcdEvent.lcdMessage.type, true);
-            this.protect.setState('realTimeEvents.lcdMessage.text', lcdEvent.lcdMessage.text, true);
-            this.protect.setState('realTimeEvents.lcdMessage.resetAt', lcdEvent.lcdMessage.resetAt, true);
+            this.protect.setState('realTimeEvents.lcdMessage.doorbell', doorbellId, true);
+            this.protect.setState('realTimeEvents.lcdMessage.raw', JSON.stringify(lcdEvent), true);
+            if (lcdEvent.lcdMessage.type) {
+                this.protect.setState('realTimeEvents.lcdMessage.type', lcdEvent.lcdMessage.type, true);
+                this.protect.setState('realTimeEvents.lcdMessage.text', lcdEvent.lcdMessage.text, true);
+                this.protect.setState('realTimeEvents.lcdMessage.resetAt', lcdEvent.lcdMessage.resetAt, true);
+            }
+        } catch (error) {
+            this.log.error(`[lcdMessageEventHandler] error: ${error.message}, stack: ${error.stack}`);
         }
     }
 

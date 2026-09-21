@@ -58,41 +58,46 @@ function decodeUpdatePacket(log, packet) {
 
 function decodeUpdateFrame(log, packet, packetType) {
 
-    // Read the packet frame type.
-    const frameType = packet.readUInt8(UpdatePacketHeader.TYPE);
+    try {
+        // Read the packet frame type.
+        const frameType = packet.readUInt8(UpdatePacketHeader.TYPE);
 
-    // This isn't the frame type we were expecting - we're done.
-    if (packetType !== frameType) {
-        return null;
-    }
-
-    // Read the payload format.
-    const payloadFormat = packet.readUInt8(UpdatePacketHeader.PAYLOAD_FORMAT);
-
-    // Check to see if we're compressed or not, and inflate if needed after skipping past the 8-byte header.
-    const payload = packet.readUInt8(UpdatePacketHeader.DEFLATED) ? zlib.inflateSync(packet.slice(UPDATE_PACKET_HEADER_SIZE)) : packet.slice(UPDATE_PACKET_HEADER_SIZE);
-
-    // If it's an action, it can only have one format.
-    if (frameType === UpdatePacketType.ACTION) {
-        return (payloadFormat === UpdatePayloadType.JSON) ? JSON.parse(payload.toString()) : null;
-    }
-
-    // Process the payload format accordingly.
-    switch (payloadFormat) {
-
-        case UpdatePayloadType.JSON:
-            // If it's data payload, it can be anything.
-            return JSON.parse(payload.toString());
-
-        case UpdatePayloadType.STRING:
-            return payload.toString('utf8');
-
-        case UpdatePayloadType.BUFFER:
-            return payload;
-
-        default:
-            log.error('Unknown payload packet type received in the realtime update events API: %s.', payloadFormat);
+        // This isn't the frame type we were expecting - we're done.
+        if (packetType !== frameType) {
             return null;
+        }
+
+        // Read the payload format.
+        const payloadFormat = packet.readUInt8(UpdatePacketHeader.PAYLOAD_FORMAT);
+
+        // Check to see if we're compressed or not, and inflate if needed after skipping past the 8-byte header.
+        const payload = packet.readUInt8(UpdatePacketHeader.DEFLATED) ? zlib.inflateSync(packet.slice(UPDATE_PACKET_HEADER_SIZE)) : packet.slice(UPDATE_PACKET_HEADER_SIZE);
+
+        // If it's an action, it can only have one format.
+        if (frameType === UpdatePacketType.ACTION) {
+            return (payloadFormat === UpdatePayloadType.JSON) ? JSON.parse(payload.toString()) : null;
+        }
+
+        // Process the payload format accordingly.
+        switch (payloadFormat) {
+
+            case UpdatePayloadType.JSON:
+                // If it's data payload, it can be anything.
+                return JSON.parse(payload.toString());
+
+            case UpdatePayloadType.STRING:
+                return payload.toString('utf8');
+
+            case UpdatePayloadType.BUFFER:
+                return payload;
+
+            default:
+                log.error('Unknown payload packet type received in the realtime update events API: %s.', payloadFormat);
+                return null;
+        }
+    } catch (error) {
+        log.error(`Realtime update API: error decoding frame: ${error}.`, error);
+        return null;
     }
 }
 
