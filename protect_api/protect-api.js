@@ -225,7 +225,7 @@ class ProtectApi {
 
             });
 
-            this.log.info(`${this.config.protectip}: Connected to the UniFi realtime update events API.`);
+            this.log.debug(`${this.config.protectip}: Connected to the UniFi realtime update events API.`);
         } catch (error) {
             this.log.error(`${this.config.protectip}: Error connecting to the realtime update events API: ${error}`);
         }
