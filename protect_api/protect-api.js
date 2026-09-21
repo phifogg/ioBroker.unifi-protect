@@ -205,6 +205,7 @@ class ProtectApi {
             this.updatesWebsocket.on('message', this.heartbeatUpdatesWebsocket.bind(this));
             this.updatesWebsocket.on('open', this.heartbeatUpdatesWebsocket.bind(this));
             this.updatesWebsocket.on('ping', this.heartbeatUpdatesWebsocket.bind(this));
+            this.updatesWebsocket.on('pong', this.heartbeatUpdatesWebsocket.bind(this));
             this.updatesWebsocket.on('close', () => {
 
                 if (this.updatesWebsocketHeartbeatTimer)
@@ -290,9 +291,24 @@ class ProtectApi {
             clearTimeout(this.updatesWebsocketHeartbeatTimer);
         }
 
-        // We use terminate() to immediately destroy the connection, instead of close(), which waits for the close timer.
+        this.updatesWebsocketAlive = true;
+
+        // Probe an idle connection before terminating it. Protect may not send any events for a long time.
         this.updatesWebsocketHeartbeatTimer = setTimeout(() => {
+            this.checkUpdatesWebsocketHeartbeat();
+        }, settings.PROTECT_EVENTS_HEARTBEAT_INTERVAL * 1000);
+    }
+
+    checkUpdatesWebsocketHeartbeat() {
+        if (!this.updatesWebsocket || this.updatesWebsocket.readyState !== WebSocket.OPEN || !this.updatesWebsocketAlive) {
             this.disconnect();
+            return;
+        }
+
+        this.updatesWebsocketAlive = false;
+        this.updatesWebsocket.ping();
+        this.updatesWebsocketHeartbeatTimer = setTimeout(() => {
+            this.checkUpdatesWebsocketHeartbeat();
         }, settings.PROTECT_EVENTS_HEARTBEAT_INTERVAL * 1000);
     }
 
